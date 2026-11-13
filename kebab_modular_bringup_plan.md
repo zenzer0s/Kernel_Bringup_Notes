@@ -69,70 +69,39 @@ All baseline artifacts were provided in `/serverhive3/zenzer0s/images/`, unpacke
 
 ---
 
-## Phase 1: Bootloader Handshake & Early Console (SimpleFB + Ramoops)
+## Phase 1: Bootloader Handshake & Early Console (SimpleFB + Ramoops) [BUILT - READY TO TEST]
 
 ### Objective
 Verify that the OnePlus 8T ABL bootloader successfully parses the Header v2 image, loads the 6.x kernel into RAM, matches the board ID, and begins execution without hardware crashes.
 
-### Kernel Configuration & DTS Changes
-1. **Enable Ramoops in Device Tree**:
-   In `arch/arm64/boot/dts/qcom/sm8250-oneplus-kebab.dts`, un-comment and configure the ramoops node:
-   ```dts
-   reserved-memory {
-       ramoops@b0000000 {
-           compatible = "ramoops";
-           reg = <0x00 0xb0000000 0x00 0x400000>;
-           record-size = <0x40000>;
-           console-size = <0x40000>;
-           ftrace-size = <0x00>;
-           pmsg-size = <0x20000>;
-           ecc-size = <0x00>;
-           no-map;
-       };
-   };
-   ```
-2. **Set ABL Board IDs**:
-   ```dts
-   / {
-       model = "OnePlus 8T";
-       compatible = "oneplus,kebab", "qcom,sm8250";
-       qcom,msm-id = <0x164 0x10000>, <0x164 0x20001>;
-       qcom,board-id = <0x10008 0>, <0x08 0x00>;
-   };
-   ```
-3. **Kernel Config (`defconfig`)**:
-   ```ini
-   CONFIG_PSTORE=y
-   CONFIG_PSTORE_CONSOLE=y
-   CONFIG_PSTORE_RAM=y
-   CONFIG_FB_SIMPLE=y
-   CONFIG_FRAMEBUFFER_CONSOLE=y
-   CONFIG_PRINTK_TIME=y
-   ```
+### Status: BUILT & PACKAGED
+1. **DTS Changes Applied**:
+   - Board IDs matched: `qcom,board-id = <0x10008 0>, <0x08 0x00>, <0x00 0x00>;`.
+   - Enabled XBL-reserved `ramoops@b0000000` (4MB memory buffer with `max-reason = 7`).
+   - DTB compiled: [`sm8250-oneplus-kebab.dtb`](file:///serverhive3/zenzer0s/kernel/kebab/alioth-aosp-mainline/arch/arm64/boot/dts/qcom/sm8250-oneplus-kebab.dtb) (122 KB).
+2. **Kernel Compiled**:
+   - Toolchain: Google AOSP Clang 22.0.2 (`clang-r596125`) with `LLVM=1 LLVM_IAS=1`.
+   - Result: [`arch/arm64/boot/Image`](file:///serverhive3/zenzer0s/kernel/kebab/alioth-aosp-mainline/arch/arm64/boot/Image) (51 MB, `Linux version 6.19.6-pipa...`).
+3. **Boot Image Packaged**:
+   - Result: [`/serverhive3/zenzer0s/images/phase1_boot.img`](file:///serverhive3/zenzer0s/images/phase1_boot.img) (54 MB).
+   - Packaging Parameters (Header v2):
+     - `page_size`: 4096
+     - `kernel_load_addr`: `0x00008000`
+     - `ramdisk_load_addr`: `0x01000000`
+     - `dtb_load_addr`: `0x01f00000`
+     - `cmdline`: `cgroup_disable=pressure printk.always_kmsg_dump=1 rcupdate.rcu_expedited=1 rcu_nocbs=0-7 kpti=off noirqdebug androidboot.hardware=qcom androidboot.memcg=1 androidboot.usbcontroller=a600000.dwc3 cgroup.memory=nokmem,nosocket loop.max_part=7 lpm_levels.sleep_disabled=1 msm_rtb.filter=0x237 pstore.ftrace=1 reboot=panic_warm service_locator.enable=1 swiotlb=2048 androidboot.prjname=19805 androidboot.bootdevice=1d84000.ufshc androidboot.fstab_suffix=default console=tty0 earlycon`
 
-### Packaging & Execution
+### Execution Command (Run on PC / Fastboot host)
 ```bash
-# Compile Kernel & DTB
-make sm8250_defconfig
-make -j$(nproc) Image dtbs
+# 1. Put phone in Fastboot mode
+adb reboot bootloader
 
-# Pack minimal Header v2 image (using stock ramdisk as placeholder)
-mkbootimg \
-  --header_version 2 \
-  --kernel arch/arm64/boot/Image \
-  --ramdisk ./backup/unpacked/ramdisk \
-  --dtb arch/arm64/boot/dts/qcom/sm8250-oneplus-kebab.dtb \
-  --cmdline "androidboot.hardware=qcom earlycon console=tty0 printk.always_kmsg_dump=1 pstore.ftrace=1 reboot=panic_warm" \
-  --base 0x00000000 \
-  --pagesize 4096 \
-  -o phase1_boot.img
-
-# Non-destructive test boot
-fastboot boot phase1_boot.img
+# 2. Test boot non-destructively
+fastboot boot /serverhive3/zenzer0s/images/phase1_boot.img
 ```
 
 ### Verification Gate & Failure Triage
-- **PASS**: Device screen displays the simple-framebuffer splash or console text, OR on subsequent reboot back to bootloader / stock ROM, `/sys/fs/pstore/console-ramoops-0` contains the 6.x Linux banner (`Linux version 6.x...`).
+- **PASS**: Device screen displays the simple-framebuffer splash or console text, OR on subsequent reboot back to bootloader / stock ROM, `/sys/fs/pstore/console-ramoops-0` contains the 6.x Linux banner (`Linux version 6.19.6...`).
 - **FAIL (Phone immediately restarts to bootloader)**:
   - *Cause*: ABL rejected the DTB.
   - *Fix*: Check `qcom,board-id` matching. Ensure header version is strictly 2.
