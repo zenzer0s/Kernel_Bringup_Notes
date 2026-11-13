@@ -29,3 +29,8 @@ Comprehensive documentation, architectural analysis, and hardware bringup notes 
    - Detailed analysis of Boot Header v2 packaging (DTB in `boot.img`, no `vendor_boot` requirement).
    - Downstream hardware extraction: Samsung AMB655X AMOLED (1080x2400 @ 120Hz, DSC 2:1), Synaptics S3908 touch, DPU bandwidth patch (28.5 Gbps).
    - Ramdisk early-init trampoline & vendor OverlayFS injection for DRM HWComposer AIDL.
+
+6. **[OnePlus 8T (kebab) Phased Modular Bringup & Verification Plan](kebab_modular_bringup_plan.md)**:
+   - Modular 8-phase execution plan to eliminate black-screen ambiguity during bringup.
+   - Strict entry prerequisites, action items, verification gates, and diagnostic failure triage for each phase.
+   - Step-by-step progression: Phase 0 (Baseline) -> Phase 1 (SimpleFB + Ramoops) -> Phase 2 (Early Ramdisk ADB) -> Phase 3 (MSM DRM 120Hz Display) -> Phase 4 (Synaptics S3908 Touch) -> Phase 5 (OverlayFS Trampoline) -> Phase 6 (SurfaceFlinger Handoff) -> Phase 7 (Peripherals & Power).
