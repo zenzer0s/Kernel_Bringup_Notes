@@ -69,65 +69,59 @@ All baseline artifacts were provided in `/serverhive3/zenzer0s/images/`, unpacke
 
 ---
 
-## Phase 1: Bootloader Handshake & Early Console (SimpleFB + Ramoops) [BUILT - READY TO TEST]
+## Phase 1: Bootloader Handshake & Early Console (SimpleFB + Ramoops) [COMPLETED & VERIFIED ON HARDWARE]
 
 ### Objective
 Verify that the OnePlus 8T ABL bootloader successfully parses the Header v2 image, loads the 6.x kernel into RAM, matches the board ID, and begins execution without hardware crashes.
 
-### Status: BUILT & PACKAGED (With DTBO & Size Solutions)
-1. **The DTBO Collision Issue Resolved**:
-   - *Problem*: Stock on-flash `dtbo` contains 80 downstream overlay fragments targeting downstream phandles (`lpi_pinctrl`, `va-macro`, etc.). When ABL executes `fdt_overlay_apply()`, it fails with `FDT_ERR_NOTFOUND` against the clean mainline DTB and aborts boot.
-   - *Solution*: Built [`images/dtbo_mainline_padded.img`](file:///serverhive3/zenzer0s/images/dtbo_mainline_padded.img) (24 MB). It matches board ID `<0x10008 0>` with a clean overlay that applies cleanly (`fdtoverlay` exit code 0).
-2. **Partition Boundary Padding Resolved**:
-   - Padded [`images/phase1_boot_padded.img`](file:///serverhive3/zenzer0s/images/phase1_boot_padded.img) to exactly **100,663,296 bytes (96 MB)** matching `BOARD_BOOTIMAGE_PARTITION_SIZE`.
-   - Padded [`images/dtbo_mainline_padded.img`](file:///serverhive3/zenzer0s/images/dtbo_mainline_padded.img) to exactly **25,165,824 bytes (24 MB)** matching `BOARD_DTBOIMG_PARTITION_SIZE`.
-3. **Stock Backups for Instant Rollback**:
-   - Stock Boot: [`images/boot.img`](file:///serverhive3/zenzer0s/images/boot.img)
-   - Stock DTBO: [`images/dtbo.img`](file:///serverhive3/zenzer0s/images/dtbo.img)
-
-### Execution Commands (Slot B Safe Workflow)
-Since your phone is actively on **slot B** (`androidboot.slot_suffix=_b`), test on slot B while keeping slot A completely untouched:
-
-```bash
-# 1. Reboot to fastboot
-adb reboot bootloader
-
-# 2. Flash Phase 1 kernel & matching mainline DTBO to slot B
-fastboot flash boot_b /serverhive3/zenzer0s/images/phase1_boot_padded.img
-fastboot flash dtbo_b /serverhive3/zenzer0s/images/dtbo_mainline_padded.img
-
-# 3. Reboot device
-fastboot reboot
-```
-
-### Instant 1-Second Rollback to Stock
-If you ever want to return immediately to your stock Android 17 kernel:
-```bash
-fastboot flash boot_b /serverhive3/zenzer0s/images/boot.img
-fastboot flash dtbo_b /serverhive3/zenzer0s/images/dtbo.img
-fastboot reboot
-```
-
-### Verification Gate & Failure Triage
-- **PASS**: Device screen displays the simple-framebuffer splash or console text, OR on subsequent reboot back to bootloader / stock ROM, `/sys/fs/pstore/console-ramoops-0` contains the 6.x Linux banner (`Linux version 6.19.6...`).
-- **FAIL (Phone immediately restarts to bootloader)**:
-  - *Cause*: ABL rejected the DTB.
-  - *Fix*: Check `qcom,board-id` matching. Ensure header version is strictly 2.
-- **FAIL (Black screen, phone powers off)**:
-  - *Cause*: Memory reservation collision in `reserved-memory`.
-  - *Fix*: Cross-check `removed_mem`, `cont_splash_mem` (`0x9c000000`) with downstream 4.19 DTS.
+### Status: PASSED & VERIFIED ON HARDWARE (2026-11-13)
+1. **Verification on OnePlus 8T (`KB2005`)**:
+   - **Kernel**: Mainline Linux 6.19.6 compiled with Google AOSP Clang 22.0.2.
+   - **Boot Image**: Header v2 padded to 96 MB (`images/phase1_boot_padded.img`).
+   - **Display Console**: `simple-framebuffer` initialized and rendered live kernel logs directly onto the physical AMOLED display.
+   - **UFS 3.1 Storage Controller**: `ufshc` probed and successfully enumerated the Samsung UFS chip (`well known lun samsung kluegbuhdb 1302 pq 0 ansi 6`).
+   - **Remoteproc PAS**: Q6V5 PAS (`5c00000`) probed.
+2. **The DTBO Breakthrough (`dtbo-stub.img`)**:
+   - The user tested `dtbo-stub.img` (284 bytes) and achieved immediate successful boot.
+   - **Binary Audit of `dtbo-stub.img`**:
+     - It is a **raw flat Device Tree Blob** (`0xd00dfeed`), NOT an Android `dt_table_header` (`0xd7b7ab1e`).
+     - Contains:
+       ```dts
+       / {
+           model = "Qualcomm Technologies, Inc. kona v2.1 SoC 19805";
+           compatible = "oneplus,kebab", "qcom,kona";
+           chassis-type = "handset";
+           qcom,msm-id = <0x00000164 0x00010000>;
+           qcom,board-id = <0x00000008 0x00000000>;
+       };
+       ```
+     - Because it has zero overlay fragments, OnePlus ABL accepts it without trying to apply broken downstream phandles, bypassing downstream overlay crashes entirely.
 
 ---
 
-## Phase 2: Core Storage & Early Ramdisk ADB Shell
+## Phase 2: Core Storage & Early Ramdisk ADB Shell [BUILT & READY TO FLASH]
 
 ### Objective
-Achieve an active root command-line shell via USB (`adb shell`) in early ramdisk before mounting Android userspace.
+Achieve an active root command-line shell via USB (`adb shell`) in early ramdisk to pull live kernel dmesg, inspect block partitions, and debug interactively without manual screen reading.
 
-### Architecture & Requirements
-- Standalone minimal ramdisk containing:
-  - `busybox` (statically linked aarch64).
-  - `adbd` (standalone Android debug daemon).
+### Architecture & Status
+- Built and packaged [`images/phase2_boot_padded.img`](file:///serverhive3/zenzer0s/images/phase2_boot_padded.img) (exactly 100,663,296 bytes).
+- Built from the device's native recovery ramdisk (`ramdisk-recovery.img` from AOSPA tree) with mainline enhancements:
+  - `init.recovery.qcom.rc` patched for mainline USB gadget: sets `sys.usb.controller a600000.dwc3` and waits directly on UDC.
+  - Sysfs storage path pre-linked: `/devices/platform/soc@0/1d84000.ufshc -> /dev/block/bootdevice`.
+  - Injected `ro.adb.secure=0`, `ro.secure=0`, `ro.debuggable=1`, `sys.usb.config=adb` into `prop.default` for instant root ADB without authentication prompts.
+
+### Execution Commands (Slot B Safe Workflow)
+```bash
+# 1. Flash Phase 2 boot image (keep dtbo-stub.img from Phase 1)
+fastboot flash boot_b /serverhive3/zenzer0s/images/phase2_boot_padded.img
+
+# 2. Reboot device
+fastboot reboot
+
+# 3. Connect via ADB on PC
+adb wait-for-device shell
+```
   - Minimal `/init` shell script configuring USB ConfigFS.
 
 ### Action Items

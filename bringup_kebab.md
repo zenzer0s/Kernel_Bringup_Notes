@@ -377,3 +377,27 @@ mkbootimg \
 - [x] **Boot Header Format Confirmed**: Header v2 (No `vendor_boot` requirement on OnePlus 8T).
 - [x] **Board ID Matching Configured**: `<0x10008 0>` and `<0x08 0x00>` under `qcom,board-id`.
 - [x] **DRM AIDL Composer Ready**: Injected via early init trampoline / OverlayFS.
+
+---
+
+## 9. Hardware Verification Milestones
+
+### Phase 1: Bootloader Handshake & Early Console [VERIFIED ON HARDWARE]
+- **Date**: 2026-11-13
+- **Device**: OnePlus 8T (`KB2005` North America), Project `19805`, Slot `_b`
+- **Images Flashed**:
+  - `boot_b`: [`phase1_boot_padded.img`](file:///serverhive3/zenzer0s/images/phase1_boot_padded.img) (96 MB padded)
+  - `dtbo_b`: [`dtbo-stub.img`](file:///serverhive3/zenzer0s/images/dtbo-stub.img) (284 bytes raw flat DTB)
+- **Results**:
+  1. Bootloader ABL handed execution over to mainline Linux 6.19.6 cleanly.
+  2. `simple-framebuffer` initialized and rendered live kernel dmesg logs onto the Samsung AMOLED panel.
+  3. UFS 3.1 host controller (`ufshc`) initialized and enumerated the Samsung UFS chip (`well known lun samsung kluegbuhdb 1302 pq 0 ansi 6`).
+  4. Q6V5 PAS remoteproc subsystem probed.
+
+### Phase 2: Core Storage & Early Ramdisk ADB Shell [BUILT & READY]
+- **Image**: [`images/phase2_boot_padded.img`](file:///serverhive3/zenzer0s/images/phase2_boot_padded.img) (100,663,296 bytes)
+- **Features**:
+  - Packed with native `ramdisk-recovery.img` from AOSPA kebab build tree.
+  - Injected mainline USB ConfigFS triggers (`a600000.dwc3`, `ro.adb.secure=0`, `sys.usb.config=adb`).
+  - Pre-linked UFS storage nodes: `/devices/platform/soc@0/1d84000.ufshc -> /dev/block/bootdevice`.
+  - Enables direct, interactive root `adb shell` on PC.
