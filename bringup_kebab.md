@@ -337,8 +337,6 @@ mkbootimg \
   --pagesize 4096 \
   -o boot-6.x-kebab.img
 ```
-  -o boot-6.x-kebab.img
-```
 
 #### Step 4: Testing & Verification
 1. Reboot phone to Fastboot mode:
