@@ -23,3 +23,9 @@ Comprehensive documentation, architectural analysis, and hardware bringup notes 
    - Subsystem-by-subsystem audit of open-source alternatives for Qualcomm downstream 4.19 drivers.
    - Breakdown of fully solved subsystems (Mesa Turnip GPU, ANGLE GLES, DRM HWC, in-kernel ath11k Wi-Fi, PureSoftKeyMint).
    - Analysis of hybrid subsystems (ADSP Audio, QRTR Cellular, Sensors) and the remaining camera/VoLTE frontiers.
+
+5. **[OnePlus 8T (kebab) Mainline Linux 6.x Bringup Guide on Android 17](bringup_kebab.md)**:
+   - Comprehensive hardware breakdown and step-by-step bringup procedure for OnePlus 8T (`kebab`) on Android 17 (SDK 37).
+   - Detailed analysis of Boot Header v2 packaging (DTB in `boot.img`, no `vendor_boot` requirement).
+   - Downstream hardware extraction: Samsung AMB655X AMOLED (1080x2400 @ 120Hz, DSC 2:1), Synaptics S3908 touch, DPU bandwidth patch (28.5 Gbps).
+   - Ramdisk early-init trampoline & vendor OverlayFS injection for DRM HWComposer AIDL.
