@@ -61,6 +61,34 @@ qcom,msm-id = <0x164 0x10000>, <0x164 0x20001>;
 qcom,board-id = <0x10008 0>, <0x08 0x00>;
 ```
 
+### 2.3 Verified Device Parameters & Dump Analysis
+Inspection of the user's running device artifacts (`images/boot.img`, `images/device_metadata/`, and `images/vbmeta.img`) establishes the exact hardware baseline:
+
+* **Target Device**: OnePlus 8T (`KB2005` North America), Project `19805` / `instantnoodlet`.
+* **Active Slot**: `androidboot.slot_suffix=_b`.
+* **Bootloader State**: `androidboot.verifiedbootstate=orange` (Unlocked).
+* **AVB State (`vbmeta.img`)**:
+  - `Flags: 3` (`AVB_VBMETA_IMAGE_FLAGS_HASHTREE_DISABLED | AVB_VBMETA_IMAGE_FLAGS_VERIFICATION_DISABLED`).
+  - dm-verity and hash tree verification are disabled on-device; unsigned custom 6.x kernels will boot without AVB verification errors.
+* **Boot Header v2 Offsets (Extracted via `unpack_bootimg.py`)**:
+  - `page_size`: 4096 bytes
+  - `kernel_size`: 58,976,280 bytes (`4.19.325-zenkernel`)
+  - `kernel_load_addr`: `0x00008000`
+  - `ramdisk_size`: 2,735,534 bytes (LZ4 compressed)
+  - `ramdisk_load_addr`: `0x01000000`
+  - `dtb_size`: 1,428,684 bytes
+  - `dtb_load_addr`: `0x01f00000`
+* **Active Panel Command-Line Binding**:
+  - `msm_drm.dsi_display0=qcom,mdss_dsi_oplus20828samsung_amb655x_1080_2400_cmd:` (100% confirmation of Samsung AMB655X command mode).
+* **Filesystem Types (`fstab.qcom`)**:
+  - `/vendor`, `/odm`: `erofs`
+  - `/system`, `/system_ext`, `/product`: `ext4`
+  - `/data`: `f2fs` with inline encryption (`inlinecrypt_optimized+wrappedkey_v0`)
+* **VINTF Display Services**:
+  - `vendor.qti.hardware.display.composer` 3.0 (HIDL)
+  - `android.hardware.graphics.composer` 2.4 (HIDL)
+  - `android.hardware.graphics.allocator` 3.0 / 4.0 (HIDL)
+
 ---
 
 ## 3. Hardware Subsystem Specifications
@@ -287,17 +315,14 @@ flowchart TD
    - `arch/arm64/boot/dts/qcom/sm8250-oneplus-kebab.dtb`
 
 #### Step 2: Prepare Ramdisk & OverlayFS
-1. Pull the current working 4.19 `boot.img` from OnePlus 8T.
-2. Unpack with `unpack_bootimg`:
+1. The working Android 17 ramdisk has already been unpacked to `/serverhive3/zenzer0s/images/unpacked_ramdisk/`.
+2. Insert `mainline_stage1`, `mainline_stage2`, and `init` trampoline scripts.
+3. Place the OverlayFS bundle `mainline_vendor_ovr.bin` into `unpacked_ramdisk/`.
+4. Repack ramdisk using LZ4 (matching stock compression):
    ```bash
-   unpack_bootimg --boot_img boot_stock.img --out stock_boot_unpacked
-   ```
-3. Extract `stock_boot_unpacked/ramdisk` into `ramdisk_root/`.
-4. Copy `mainline_stage1`, `mainline_stage2`, and `init` trampoline scripts.
-5. Place the OverlayFS bundle `mainline_vendor_ovr.bin` into `ramdisk_root/`.
-6. Repack ramdisk:
-   ```bash
-   cd ramdisk_root && find . | cpio -H newc -o | gzip -9 > ../ramdisk_mainline.cpio.gz && cd ..
+   cd /serverhive3/zenzer0s/images/unpacked_ramdisk
+   find . | cpio -H newc -o | lz4 -l -12 --favor-decSpeed > ../ramdisk_mainline.lz4
+   cd -
    ```
 
 #### Step 3: Repack Header v2 Boot Image
@@ -305,11 +330,13 @@ flowchart TD
 mkbootimg \
   --header_version 2 \
   --kernel arch/arm64/boot/Image \
-  --ramdisk ramdisk_mainline.cpio.gz \
+  --ramdisk /serverhive3/zenzer0s/images/ramdisk_mainline.lz4 \
   --dtb arch/arm64/boot/dts/qcom/sm8250-oneplus-kebab.dtb \
-  --cmdline "androidboot.hardware=qcom androidboot.memcg=1 androidboot.usbcontroller=a600000.dwc3 loop.max_part=7 printk.always_kmsg_dump=1 pstore.ftrace=1 reboot=panic_warm service_locator.enable=1 swiotlb=2048" \
+  --cmdline "cgroup_disable=pressure printk.always_kmsg_dump=1 rcupdate.rcu_expedited=1 rcu_nocbs=0-7 kpti=off noirqdebug androidboot.hardware=qcom androidboot.memcg=1 androidboot.usbcontroller=a600000.dwc3 cgroup.memory=nokmem,nosocket loop.max_part=7 lpm_levels.sleep_disabled=1 msm_rtb.filter=0x237 pstore.ftrace=1 reboot=panic_warm service_locator.enable=1 swiotlb=2048 androidboot.prjname=19805 androidboot.bootdevice=1d84000.ufshc androidboot.fstab_suffix=default" \
   --base 0x00000000 \
   --pagesize 4096 \
+  -o boot-6.x-kebab.img
+```
   -o boot-6.x-kebab.img
 ```
 
