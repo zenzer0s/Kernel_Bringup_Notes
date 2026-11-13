@@ -89,6 +89,11 @@ Inspection of the user's running device artifacts (`images/boot.img`, `images/de
   - `android.hardware.graphics.composer` 2.4 (HIDL)
   - `android.hardware.graphics.allocator` 3.0 / 4.0 (HIDL)
 
+* **Raw Active Kernel Command Line (from `/proc/cmdline`)**:
+  ```text
+  cgroup_disable=pressure printk.always_kmsg_dump=1 rcupdate.rcu_expedited=1 rcu_nocbs=0-7 kpti=off noirqdebug androidboot.hardware=qcom androidboot.memcg=1 androidboot.usbcontroller=a600000.dwc3 cgroup.memory=nokmem,nosocket loop.max_part=7 lpm_levels.sleep_disabled=1 msm_rtb.filter=0x237 printk.always_kmsg_dump=1 pstore.ftrace=1 reboot=panic_warm service_locator.enable=1 swiotlb=2048 lk_version=V1.0 androidboot.startupmode=dc_charger androidboot.mode=reboot printk.disable_uart=1 phx_rus_conf.main_on=1 phx_rus_conf.recovery_method=2 phx_rus_conf.kernel_time=240 phx_rus_conf.android_time=250 smooth_soc_switch=0 simcardnum.doublesim=1 androidboot.opt_sim_count=2 androidboot.prjname=19805 esim.status=0 androidboot.verifiedbootstate=orange androidboot.keymaster=1 androidboot.bootdevice=1d84000.ufshc androidboot.fstab_suffix=default androidboot.boot_devices=soc/1d84000.ufshc androidboot.serialno=3b158d06 androidboot.baseband=mdm msm_drm.dsi_display0=qcom,mdss_dsi_oplus20828samsung_amb655x_1080_2400_cmd: androidboot.slot_suffix=_b rootwait ro init=/init androidboot.dtbo_idx=2 androidboot.dtb_idx=0 androidboot.mode=normal androidboot.recoveryreason=000 androidboot.project_codename=instantnoodlet androidboot.hw_version=22 androidboot.rf_version=13 androidboot.prj_version=19805 androidboot.platform_id=356 androidboot.platform_name=SM8250 androidboot.startupmode=dc_charger androidboot.enable_dm_verity=1 androidboot.at_location=factory androidboot.power_cut_test=0 androidboot.secboot=enabled androidboot.battery.absent=false androidboot.rpmb_enable=true androidboot.type=nonrelease androidboot.prmec=true androidboot.opcarrier=none androidboot.oplus.brand=OnePlus androidboot.cust=0
+  ```
+
 ---
 
 ## 3. Hardware Subsystem Specifications
