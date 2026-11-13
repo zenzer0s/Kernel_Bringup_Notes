@@ -395,9 +395,16 @@ mkbootimg \
   4. Q6V5 PAS remoteproc subsystem probed.
 
 ### Phase 2: Core Storage & Early Ramdisk ADB Shell [BUILT & READY]
-- **Image**: [`images/phase2_stock_boot_padded.img`](file:///serverhive3/zenzer0s/images/phase2_stock_boot_padded.img) (100,663,296 bytes)
+- **Image (Versioned)**: [`images/kebab_boot_v3_stock_socfix_padded.img`](file:///serverhive3/zenzer0s/images/kebab_boot_v3_stock_socfix_padded.img) (100,663,296 bytes)
 - **Features**:
   - Packed with **user's actual stock ROM ramdisk** (`unpacked_ramdisk/`) from stock `boot.img`.
   - Injected `/force_debuggable` and `/adb_debug.prop` (`ro.debuggable=1`, `ro.adb.secure=0`, `persist.sys.usb.config=adb`, `vendor.usb.use_gadget_hal=0`).
   - **DTS Fix applied in `sm8250.dtsi`**: Renamed `soc: soc@0` to `soc: soc` to match the exact sysfs path `/sys/devices/platform/soc/1d84000.ufshc` expected by Qualcomm's `init.target.rc` line 48 (`wait /dev/block/platform/soc/1d84000.ufshc`).
   - Enables direct, interactive root `adb shell` on PC.
+
+### Image Versioning Changelog
+| Version | Filename | Description | Status |
+| :--- | :--- | :--- | :--- |
+| **v1** | `phase1_boot_padded.img` | Initial 6.19.6 kernel + SimpleFB + board-id | **PASS (Console + UFS alive)** |
+| **v2** | `phase2_boot_padded.img` | AOSPA recovery ramdisk test | Archived |
+| **v3** | `kebab_boot_v3_stock_socfix_padded.img` | Stock ROM ramdisk + `sm8250.dtsi` `soc` rename | **Active Ready to Test** |
