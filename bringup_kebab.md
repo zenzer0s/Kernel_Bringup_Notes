@@ -407,4 +407,5 @@ mkbootimg \
 | :--- | :--- | :--- | :--- |
 | **v1** | `phase1_boot_padded.img` | Initial 6.19.6 kernel + SimpleFB + board-id | **PASS (Console + UFS alive)** |
 | **v2** | `phase2_boot_padded.img` | AOSPA recovery ramdisk test | Archived |
-| **v3** | `kebab_boot_v3_stock_socfix_padded.img` | Stock ROM ramdisk + `sm8250.dtsi` `soc` rename | **Active Ready to Test** |
+| **v3** | `kebab_boot_v3_stock_socfix_padded.img` | Stock ROM ramdisk + `sm8250.dtsi` `soc` rename | **PASS (`metadata` mounted on `sda20`)** |
+| **v4** | `kebab_boot_v4_clean_fstab_padded.img` | Clean 5-partition dynamic fstab (Alioth fix) + `force_normal_boot=1` | **Active Ready to Test** |
