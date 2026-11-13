@@ -74,30 +74,38 @@ All baseline artifacts were provided in `/serverhive3/zenzer0s/images/`, unpacke
 ### Objective
 Verify that the OnePlus 8T ABL bootloader successfully parses the Header v2 image, loads the 6.x kernel into RAM, matches the board ID, and begins execution without hardware crashes.
 
-### Status: BUILT & PACKAGED
-1. **DTS Changes Applied**:
-   - Board IDs matched: `qcom,board-id = <0x10008 0>, <0x08 0x00>, <0x00 0x00>;`.
-   - Enabled XBL-reserved `ramoops@b0000000` (4MB memory buffer with `max-reason = 7`).
-   - DTB compiled: [`sm8250-oneplus-kebab.dtb`](file:///serverhive3/zenzer0s/kernel/kebab/alioth-aosp-mainline/arch/arm64/boot/dts/qcom/sm8250-oneplus-kebab.dtb) (122 KB).
-2. **Kernel Compiled**:
-   - Toolchain: Google AOSP Clang 22.0.2 (`clang-r596125`) with `LLVM=1 LLVM_IAS=1`.
-   - Result: [`arch/arm64/boot/Image`](file:///serverhive3/zenzer0s/kernel/kebab/alioth-aosp-mainline/arch/arm64/boot/Image) (51 MB, `Linux version 6.19.6-pipa...`).
-3. **Boot Image Packaged**:
-   - Result: [`/serverhive3/zenzer0s/images/phase1_boot.img`](file:///serverhive3/zenzer0s/images/phase1_boot.img) (54 MB).
-   - Packaging Parameters (Header v2):
-     - `page_size`: 4096
-     - `kernel_load_addr`: `0x00008000`
-     - `ramdisk_load_addr`: `0x01000000`
-     - `dtb_load_addr`: `0x01f00000`
-     - `cmdline`: `cgroup_disable=pressure printk.always_kmsg_dump=1 rcupdate.rcu_expedited=1 rcu_nocbs=0-7 kpti=off noirqdebug androidboot.hardware=qcom androidboot.memcg=1 androidboot.usbcontroller=a600000.dwc3 cgroup.memory=nokmem,nosocket loop.max_part=7 lpm_levels.sleep_disabled=1 msm_rtb.filter=0x237 pstore.ftrace=1 reboot=panic_warm service_locator.enable=1 swiotlb=2048 androidboot.prjname=19805 androidboot.bootdevice=1d84000.ufshc androidboot.fstab_suffix=default console=tty0 earlycon`
+### Status: BUILT & PACKAGED (With DTBO & Size Solutions)
+1. **The DTBO Collision Issue Resolved**:
+   - *Problem*: Stock on-flash `dtbo` contains 80 downstream overlay fragments targeting downstream phandles (`lpi_pinctrl`, `va-macro`, etc.). When ABL executes `fdt_overlay_apply()`, it fails with `FDT_ERR_NOTFOUND` against the clean mainline DTB and aborts boot.
+   - *Solution*: Built [`images/dtbo_mainline_padded.img`](file:///serverhive3/zenzer0s/images/dtbo_mainline_padded.img) (24 MB). It matches board ID `<0x10008 0>` with a clean overlay that applies cleanly (`fdtoverlay` exit code 0).
+2. **Partition Boundary Padding Resolved**:
+   - Padded [`images/phase1_boot_padded.img`](file:///serverhive3/zenzer0s/images/phase1_boot_padded.img) to exactly **100,663,296 bytes (96 MB)** matching `BOARD_BOOTIMAGE_PARTITION_SIZE`.
+   - Padded [`images/dtbo_mainline_padded.img`](file:///serverhive3/zenzer0s/images/dtbo_mainline_padded.img) to exactly **25,165,824 bytes (24 MB)** matching `BOARD_DTBOIMG_PARTITION_SIZE`.
+3. **Stock Backups for Instant Rollback**:
+   - Stock Boot: [`images/boot.img`](file:///serverhive3/zenzer0s/images/boot.img)
+   - Stock DTBO: [`images/dtbo.img`](file:///serverhive3/zenzer0s/images/dtbo.img)
 
-### Execution Command (Run on PC / Fastboot host)
+### Execution Commands (Slot B Safe Workflow)
+Since your phone is actively on **slot B** (`androidboot.slot_suffix=_b`), test on slot B while keeping slot A completely untouched:
+
 ```bash
-# 1. Put phone in Fastboot mode
+# 1. Reboot to fastboot
 adb reboot bootloader
 
-# 2. Test boot non-destructively
-fastboot boot /serverhive3/zenzer0s/images/phase1_boot.img
+# 2. Flash Phase 1 kernel & matching mainline DTBO to slot B
+fastboot flash boot_b /serverhive3/zenzer0s/images/phase1_boot_padded.img
+fastboot flash dtbo_b /serverhive3/zenzer0s/images/dtbo_mainline_padded.img
+
+# 3. Reboot device
+fastboot reboot
+```
+
+### Instant 1-Second Rollback to Stock
+If you ever want to return immediately to your stock Android 17 kernel:
+```bash
+fastboot flash boot_b /serverhive3/zenzer0s/images/boot.img
+fastboot flash dtbo_b /serverhive3/zenzer0s/images/dtbo.img
+fastboot reboot
 ```
 
 ### Verification Gate & Failure Triage
